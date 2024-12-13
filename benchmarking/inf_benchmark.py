@@ -19,7 +19,7 @@ def main():
                 "--video-id",
                 f"{i}",
                 "--batch-size",
-                "1",
+                "20",
             ]
         )
 
