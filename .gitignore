@@ -2,3 +2,12 @@
 .vscode
 .DS_Store
 
+*.aux
+*.gz
+*.toc
+*.out
+*.log
+*.fls
+*.fdb_latexmk
+
+dataset/tapvid-davis
