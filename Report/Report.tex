@@ -92,6 +92,23 @@
 % Титульный лист
 
 \usepackage{listings}
+
+\lstdefinestyle{mystyle}{
+    % backgroundcolor=\color{gray!10},    % slightly gray background
+    commentstyle=\color{olive},        % comments in olive
+    keywordstyle=\color{blue},         % keywords in blue
+    stringstyle=\color{teal},          % strings in teal
+    basicstyle=\ttfamily\footnotesize, % typewriter font, small size
+    numberstyle=\tiny\color{gray},     % line numbers in gray, tiny size
+    % numbers=left,                      % line numbers on the left
+    frame=single,                      % single border around code
+    rulecolor=\color{black},           % border color
+    columns=fullflexible,              % better spacing
+    breaklines=true,                   % line breaking
+    breakatwhitespace=false,
+    tabsize=4,
+    showstringspaces=false
+}
 \newcommand*{\titlePage}{
 	\thispagestyle{title}
 	\begingroup
@@ -450,7 +467,8 @@ Tapvid-Davis-480. Данные доступны по \href{https://www.dropbox.c
 
 В статье завлены следующие данные для рассматриваемого датасета:
 $OA=0.881, AJ=0.646, <\delta^x_{avg}=0.804$. Эксперимент подтверждает достижение таких значений.
-	
+
+Расширенный файл, содержащий метрики, доступен на \href{https://drive.google.com/file/d/1NcQksZNBh9HBexJbsNAwEITHeBhoiuUi/view?usp=drive_link}{диске}.
 \subsection{Производительность}
 Эксперименты производятся на устройстве Lenovo Legion 7 (AMD Ryzen 9 5900HX, NVIDIA GeForce RTX 3080 120W 16Gb, 32 Gb RAM).
 
@@ -605,7 +623,73 @@ $OA=0.881, AJ=0.646, <\delta^x_{avg}=0.804$. Эксперимент подтве
 \newpage
 
 
-\section{Техническая информация (In progress)} 
+\section{Техническая информация} 
+В данной секции рассматривается процесс установки необходимого ПО и его использования для проведения экспериментов, описанных в предыдущих секциях. В ходе работы над тестовым заданием был создан \href{https://github.com/diuzhevVlad/dino-tracker-assignment.git}{fork} оригинального репозитория, содержащий некоторые утилитарные скрипты и интерактивные блокноты. 
+
+Для начала работы с репозиторием:
+\lstset{style=mystyle}
+\begin{lstlisting}[language=bash]
+git clone https://github.com/diuzhevVlad/dino-tracker-assignment.git
+\end{lstlisting}
+
+\subsection{Настройка окружения}
+В оригинальном репозитории авторы предлагают использовать окружение conda на основе python3.9. При использовании официальной инструкции возникают проблемы совместимости версий библиотек. Необходимо указать версию \textit{numpy 1.26.0} в файле \textit{requirements.txt}. Данное исправление сделано в указаном выше репозитории.
+
+Для создания окружения:
+\lstset{style=mystyle}
+\begin{lstlisting}[language=bash]
+conda create -n dino-tracker python=3.9 
+conda activate dino-tracker 
+pip install -r requirements.txt
+\end{lstlisting}
+
+Для удобного добавления репозитория в \textit{PYTHONPATH}:
+\begin{lstlisting}[language=bash]
+conda install conda-build
+conda develop .
+\end{lstlisting}
+
+\subsection{Загрузка датасетов}
+Для использования датасетов их файлы архивов достаточно распаковать в директорию \textit{dataset}. В ходе выполнения задания использовались \href{https://drive.google.com/file/d/15iur2U_639eWnykylz69-RPGT6p3Ip8u/view?usp=drive_link}{custom} и \href{https://www.dropbox.com/scl/fo/7s2rgsm92qbzzh2xnx51d/AIvXxRaJPL2RQm43Zi_taJU?e=1&preview=davis_480.zip&rlkey=6cs0bm2u0on1u7z0jyxlq8avq&st=7s75r77a&dl=0}{Tapvid-Davis-480}. Первый содержит только сырые кадры 4 четырех снятых видео. Второй включает в себя помимо этого сегментационные маски для построения репрезентативных визуализаций, а также предобученные модели DELTA-DINO и CNN-Refiner (tracker head).
+
+\subsection{Получение метрик для Tapvid-Davis-480}
+Для упрощения процедуры оценки качества на рекомендуемом авторами датасете были написаны два скрипта-оркестратора, оперирущие другими предоставляемыми авторами скриптами.
+
+Запустить расчет DINOv2 признаков для всех видео датасета:
+\begin{lstlisting}[language=bash]
+python3 benchmarking/preprocess_benchmark.py
+\end{lstlisting}
+В ходе работы будет выполнен скрипт \textit{preprocessing/save\_dino\_embed\_video.py} для всех видео датасета. В результате во всех директориях \textit{dataset/tapvid-davis/\{i\}} должна появиться папка \textit{dino\_embeddings}, содержащая файлы признаков.
+
+Запустить расчет траекторий ключевых точек, для которых предусмотрены ground-truth данные:
+\begin{lstlisting}[language=bash]
+python3 benchmarking/inf_benchmark.py
+\end{lstlisting}
+В ходе работы будет выполнен скрипт \textit{inference\_benchmark.py} для всех видео датасета. В результате во всех директориях \textit{dataset/tapvid-davis/\{i\}} должнs появиться папки \textit{occlusions} и \textit{trajectories}, содержащие файлы предсказаний траекторий и окллюзий для целевых точек.
+
+Для расчета метрик и сохранения в файл:
+\begin{lstlisting}[language=bash]
+python3 ./eval/eval_benchmark.py \
+    --dataset-root-dir ./dataset/tapvid-davis \
+    --benchmark-pickle-path ./tapvid/tapvid_davis_data_strided.pkl \
+    --out-file ./tapvid/comp_metrics_davis.csv \
+    --dataset-type tapvid 
+\end{lstlisting}
+
+В зависимости от мощности используемого оборудования пвесь процесс может занять до 4 часов.
+
+\subsection{Обучение}
+Процесс обучения подробно описан в оригинальной инструкции и состоит из запуска скриптов предобработки (\textit{preprocessing/main\_preprocessing.py}) для расчета DINOv2 признаков, а также оптического потока и нахождения семантически схожих точек (best-buddies), и непостредственно скрипта обучения \textit{train.py} с соответсвующими параметрами.
+
+Оригинальные скрипты не предполагают процесса логирования (в том числе в wandb). Единственным индикатором выполнения является progressbar с текущим статусом.
+
+\subsection{Инференс}
+Все эксперименты, связанные с инференсом моделей, а также утилитарные функции, упрощающие взаимодействие с базовыми классами, представлеными в репозитории, произведены в интерактивном блокноте \\ \textit{visualization/playground.ipynb}. Использование данного файла предполагает проведение этапа инференса бенчмарка Tapvid-Davis и обучение моделей на датасете Custom (суммарно файлы весов и предсказанных траекторий/окклюзий для всех видео занимают слишком большое количество памяти для загрузки на диск, однако могут быть предоставлены по просьбе).
+
+Алгоритм проведения визуализации множества точек в виде сетки подробно описан в официальной инструкции, однако стоит отметить, что такой вид визуализации подходит при наличии ground-truth сегментационных масок (иначе данные плохо интерпретируемы).
+
+Пример визуализации нейросетевой модели посредством библиотеки \textit{torchview} расположен в файле \textit{visualization/model\_visualization.ipynb}. Из-за сложной структуры исходных классов моделей их не удалось конвертировать в формат onnx для более качественной визуализации.
+
 \newpage
 
 
