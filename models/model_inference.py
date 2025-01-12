@@ -214,4 +214,19 @@ class ModelInference(torch.nn.Module):
         anchor_trajs = self.compute_anchor_trajectories(trajs, cos_sims, batch_size)
         occ = self.compute_occlusion(trajs, cos_sims, anchor_trajs)
         return trajs[..., :2], occ # N x T x 2, N x T
+    
+    @torch.no_grad()
+    def infer_with_prob(self, query_points: torch.Tensor, batch_size=None) -> torch.Tensor:
+        """Infer trajectory and occlusion for query points.
+        Args:
+            query_points (torch.Tensor): Query points. N x 3. N is the number of query points. (x, y, t).
+            batch_size (int): Batch size for inference. if None, all frames are inferred at once.
+        Returns:
+            trajectories (torch.Tensor): Predicted trajectory. N x T x 2. T is the number of time steps.
+            occlusion (torch.Tensor): Predicted occlusion. N x T. T is the number of time steps."""
+        trajs = self.compute_trajectories(query_points, batch_size) # N x T x 3
+        cos_sims = self.compute_trajectory_cos_sims(trajs, query_points)
+        anchor_trajs = self.compute_anchor_trajectories(trajs, cos_sims, batch_size)
+        occ = self.compute_occlusion(trajs, cos_sims, anchor_trajs)
+        return trajs[..., :2], occ, cos_sims # N x T x 2, N x T
 

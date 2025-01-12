@@ -4,6 +4,7 @@ import argparse
 import torch
 import yaml
 from utils import add_config_paths
+import time
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -17,6 +18,8 @@ if __name__ == "__main__":
     with open(args.config, "r") as f:
         config = yaml.safe_load(f.read())
         config = add_config_paths(args.data_path, config)
+
+    start_time = time.time()
     
     # 1. compute raft optical flows trajectories with direct flow filtering if specified, used for training
     args_list = ['python', './preprocessing/extract_trajectories.py', 
@@ -26,6 +29,8 @@ if __name__ == "__main__":
         args_list += ['--filter-using-direct-flow', '--direct-flow-threshold', str(config['direct_flow_threshold'])]
     print(f"----- Running {' '.join(args_list)}", flush=True)
     subprocess.run(args_list)
+    print(f"Finished in {time.time() - start_time} s")
+    start_time = time.time()
 
     # 2. compute DINO embeddings for training & dino-bb
     args_list = ['python', './preprocessing/save_dino_embed_video.py', 
@@ -33,6 +38,8 @@ if __name__ == "__main__":
                     
     print(f"----- Running {' '.join(args_list)}", flush=True)
     subprocess.run(args_list)
+    print(f"Finished in {time.time() - start_time} s")
+    start_time = time.time()
 
     # 3. create FG masks using DINO features - if GT masks are not provided
     if not os.path.exists(config['masks_path']):
@@ -49,15 +56,20 @@ if __name__ == "__main__":
         subprocess.run(args_list)
     else:
         print("Masks already exist, skipping...", flush=True)
+    print(f"Finished in {time.time() - start_time} s")
+    start_time = time.time()
     
     # 4. split trajectories to FG & BG
     args_list = ['python', './preprocessing/split_trajectories_to_fg_bg.py', 
                  '--traj_path', config['trajectories_file'], '--fg_masks_path', config['masks_path'], '--fg_traj_path', config['fg_trajectories_file'], '--bg_traj_path', config['bg_trajectories_file']]
     print(f"----- Running {' '.join(args_list)}", flush=True)
     subprocess.run(args_list)
+    print(f"Finished in {time.time() - start_time} s")
+    start_time = time.time()
     
     # 5. preprocess DINO best-buddies
     args_list = ['python', './preprocessing_dino_bb/main_dino_bb_preprocessing.py', 
                  '--config', args.config, '--data-path', str(args.data_path)]
     print(f"----- Running {' '.join(args_list)}", flush=True)
     subprocess.run(args_list)
+    print(f"Finished in {time.time() - start_time} s")
